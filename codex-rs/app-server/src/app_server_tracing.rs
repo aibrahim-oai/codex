@@ -9,6 +9,7 @@
 
 use crate::message_processor::ConnectionSessionState;
 use crate::outgoing_message::ConnectionId;
+use crate::outgoing_message::ConnectionRequestId;
 use crate::transport::AppServerTransport;
 use codex_app_server_protocol::ClientRequest;
 use codex_app_server_protocol::InitializeParams;
@@ -27,18 +28,11 @@ pub(crate) fn request_span(
     connection_id: ConnectionId,
     session: &ConnectionSessionState,
 ) -> Span {
-    let span = info_span!(
-        "app_server.request",
-        otel.kind = "server",
-        otel.name = request.method.as_str(),
-        rpc.system = "jsonrpc",
-        rpc.method = request.method.as_str(),
-        rpc.transport = transport_name(transport),
-        rpc.request_id = ?request.id,
-        app_server.connection_id = ?connection_id,
-        app_server.api_version = "v2",
-        app_server.client_name = field::Empty,
-        app_server.client_version = field::Empty,
+    let span = request_span_inner(
+        request.method.as_str(),
+        transport_name(transport),
+        &request.id,
+        connection_id,
     );
 
     let initialize_client_info = initialize_client_info(request);
@@ -86,19 +80,7 @@ pub(crate) fn typed_request_span(
     session: &ConnectionSessionState,
 ) -> Span {
     let method = request.method();
-    let span = info_span!(
-        "app_server.request",
-        otel.kind = "server",
-        otel.name = method,
-        rpc.system = "jsonrpc",
-        rpc.method = method,
-        rpc.transport = "in-process",
-        rpc.request_id = ?request.id(),
-        app_server.connection_id = ?connection_id,
-        app_server.api_version = "v2",
-        app_server.client_name = field::Empty,
-        app_server.client_version = field::Empty,
-    );
+    let span = request_span_inner(&method, "in-process", request.id(), connection_id);
 
     if let Some((client_name, client_version)) = initialize_client_info_from_typed_request(request)
     {
@@ -120,11 +102,75 @@ pub(crate) fn typed_request_span(
     span
 }
 
+pub(crate) fn detached_request_span(
+    request_id: &ConnectionRequestId,
+    method: &'static str,
+    parent_trace: Option<&W3cTraceContext>,
+) -> Span {
+    let span = request_span_inner(
+        method,
+        "detached",
+        &request_id.request_id,
+        request_id.connection_id,
+    );
+
+    if let Some(trace) = parent_trace {
+        if !set_parent_from_w3c_trace_context(&span, trace) {
+            tracing::warn!(
+                rpc_method = method,
+                rpc_request_id = ?request_id.request_id,
+                "ignoring invalid inbound request trace carrier"
+            );
+        }
+    } else if let Some(context) = traceparent_context_from_env() {
+        set_parent_from_context(&span, context);
+    }
+
+    span
+}
+
 fn transport_name(transport: AppServerTransport) -> &'static str {
     match transport {
         AppServerTransport::Stdio => "stdio",
         AppServerTransport::WebSocket { .. } => "websocket",
     }
+}
+
+fn request_span_inner(
+    method: &str,
+    transport: &'static str,
+    request_id: &impl std::fmt::Debug,
+    connection_id: ConnectionId,
+) -> Span {
+    if method == "thread/start" {
+        return info_span!(
+            "thread/start",
+            otel.kind = "server",
+            otel.name = method,
+            rpc.system = "jsonrpc",
+            rpc.method = method,
+            rpc.transport = transport,
+            rpc.request_id = ?request_id,
+            app_server.connection_id = ?connection_id,
+            app_server.api_version = "v2",
+            app_server.client_name = field::Empty,
+            app_server.client_version = field::Empty,
+        );
+    }
+
+    info_span!(
+        "app_server.request",
+        otel.kind = "server",
+        otel.name = method,
+        rpc.system = "jsonrpc",
+        rpc.method = method,
+        rpc.transport = transport,
+        rpc.request_id = ?request_id,
+        app_server.connection_id = ?connection_id,
+        app_server.api_version = "v2",
+        app_server.client_name = field::Empty,
+        app_server.client_version = field::Empty,
+    )
 }
 
 fn client_name<'a>(

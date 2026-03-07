@@ -12,6 +12,7 @@ use crate::external_agent_config_api::ExternalAgentConfigApi;
 use crate::outgoing_message::ConnectionId;
 use crate::outgoing_message::ConnectionRequestId;
 use crate::outgoing_message::OutgoingMessageSender;
+use crate::outgoing_message::RequestContext;
 use crate::transport::AppServerTransport;
 use async_trait::async_trait;
 use codex_app_server_protocol::ChatgptAuthTokensRefreshParams;
@@ -55,6 +56,7 @@ use codex_core::models_manager::collaboration_mode_presets::CollaborationModesCo
 use codex_feedback::CodexFeedback;
 use codex_protocol::ThreadId;
 use codex_protocol::protocol::SessionSource;
+use codex_protocol::protocol::W3cTraceContext;
 use codex_state::log_db::LogDbLayer;
 use futures::FutureExt;
 use tokio::sync::broadcast;
@@ -63,6 +65,7 @@ use tokio::time::Duration;
 use tokio::time::timeout;
 use toml::Value as TomlValue;
 use tracing::Instrument;
+use tracing::Span;
 
 const EXTERNAL_AUTH_REFRESH_TIMEOUT: Duration = Duration::from_secs(10);
 
@@ -241,54 +244,74 @@ impl MessageProcessor {
         transport: AppServerTransport,
         session: &mut ConnectionSessionState,
     ) {
+        let request_method = request.method.as_str();
+        let detached_thread_start = request_method == "thread/start";
+        tracing::trace!(
+            ?connection_id,
+            request_id = ?request.id,
+            "app-server request: {request_method}"
+        );
+        let request_id = ConnectionRequestId {
+            connection_id,
+            request_id: request.id.clone(),
+        };
         let request_span =
             crate::app_server_tracing::request_span(&request, transport, connection_id, session);
-        async {
-            let request_method = request.method.as_str();
-            tracing::trace!(
-                ?connection_id,
-                request_id = ?request.id,
-                "app-server request: {request_method}"
-            );
-            let request_id = ConnectionRequestId {
-                connection_id,
-                request_id: request.id.clone(),
-            };
-            let request_json = match serde_json::to_value(&request) {
-                Ok(request_json) => request_json,
-                Err(err) => {
-                    let error = JSONRPCErrorError {
-                        code: INVALID_REQUEST_ERROR_CODE,
-                        message: format!("Invalid request: {err}"),
-                        data: None,
-                    };
-                    self.outgoing.send_error(request_id, error).await;
-                    return;
-                }
-            };
+        let request_context = RequestContext::new(request_id.clone(), request_span.clone());
+        self.outgoing
+            .register_request_context(request_context.clone())
+            .await;
+        let request_json = match serde_json::to_value(&request) {
+            Ok(request_json) => request_json,
+            Err(err) => {
+                let error = JSONRPCErrorError {
+                    code: INVALID_REQUEST_ERROR_CODE,
+                    message: format!("Invalid request: {err}"),
+                    data: None,
+                };
+                self.outgoing.send_error(request_id, error).await;
+                return;
+            }
+        };
 
-            let codex_request = match serde_json::from_value::<ClientRequest>(request_json) {
-                Ok(codex_request) => codex_request,
-                Err(err) => {
-                    let error = JSONRPCErrorError {
-                        code: INVALID_REQUEST_ERROR_CODE,
-                        message: format!("Invalid request: {err}"),
-                        data: None,
-                    };
-                    self.outgoing.send_error(request_id, error).await;
-                    return;
-                }
-            };
-
+        let codex_request = match serde_json::from_value::<ClientRequest>(request_json) {
+            Ok(codex_request) => codex_request,
+            Err(err) => {
+                let error = JSONRPCErrorError {
+                    code: INVALID_REQUEST_ERROR_CODE,
+                    message: format!("Invalid request: {err}"),
+                    data: None,
+                };
+                self.outgoing.send_error(request_id, error).await;
+                return;
+            }
+        };
+        let detached_request_span = detached_thread_start.then(|| request_span.clone());
+        let request_fut = async {
             // Websocket callers finalize outbound readiness in lib.rs after mirroring
             // session state into outbound state and sending initialize notifications to
             // this specific connection. Passing `None` avoids marking the connection
             // ready too early from inside the shared request handler.
-            self.handle_client_request(connection_id, request_id, codex_request, session, None)
-                .await;
+            self.handle_client_request(
+                connection_id,
+                request_id,
+                codex_request,
+                session,
+                None,
+                if detached_thread_start {
+                    request.trace.clone()
+                } else {
+                    None
+                },
+                detached_request_span,
+            )
+            .await;
+        };
+        if detached_thread_start {
+            request_fut.await;
+        } else {
+            request_fut.instrument(request_span).await;
         }
-        .instrument(request_span)
-        .await;
     }
 
     /// Handles a typed request path used by in-process embedders.
@@ -302,18 +325,24 @@ impl MessageProcessor {
         session: &mut ConnectionSessionState,
         outbound_initialized: &AtomicBool,
     ) {
+        let detached_thread_start = matches!(&request, ClientRequest::ThreadStart { .. });
+        let request_id = ConnectionRequestId {
+            connection_id,
+            request_id: request.id().clone(),
+        };
         let request_span =
             crate::app_server_tracing::typed_request_span(&request, connection_id, session);
-        async {
-            let request_id = ConnectionRequestId {
-                connection_id,
-                request_id: request.id().clone(),
-            };
-            tracing::trace!(
-                ?connection_id,
-                request_id = ?request_id.request_id,
-                "app-server typed request"
-            );
+        let request_context = RequestContext::new(request_id.clone(), request_span.clone());
+        self.outgoing
+            .register_request_context(request_context.clone())
+            .await;
+        tracing::trace!(
+            ?connection_id,
+            request_id = ?request_id.request_id,
+            "app-server typed request"
+        );
+        let detached_request_span = detached_thread_start.then(|| request_span.clone());
+        let request_fut = async {
             // In-process clients do not have the websocket transport loop that performs
             // post-initialize bookkeeping, so they still finalize outbound readiness in
             // the shared request handler.
@@ -323,11 +352,16 @@ impl MessageProcessor {
                 request,
                 session,
                 Some(outbound_initialized),
+                None,
+                detached_request_span,
             )
             .await;
+        };
+        if detached_thread_start {
+            request_fut.await;
+        } else {
+            request_fut.instrument(request_span).await;
         }
-        .instrument(request_span)
-        .await;
     }
 
     pub(crate) async fn process_notification(&self, notification: JSONRPCNotification) {
@@ -385,7 +419,16 @@ impl MessageProcessor {
             .await;
     }
 
+    pub(crate) async fn drain_background_tasks(&self) {
+        self.codex_message_processor.drain_background_tasks().await;
+    }
+
+    pub(crate) async fn shutdown_threads(&self) {
+        self.codex_message_processor.shutdown_threads().await;
+    }
+
     pub(crate) async fn connection_closed(&mut self, connection_id: ConnectionId) {
+        self.outgoing.connection_closed(connection_id).await;
         self.codex_message_processor
             .connection_closed(connection_id)
             .await;
@@ -419,6 +462,8 @@ impl MessageProcessor {
         // connection outbound-ready. Websocket JSON-RPC calls pass `None` so
         // lib.rs can deliver connection-scoped initialize notifications first.
         outbound_initialized: Option<&AtomicBool>,
+        request_trace_override: Option<W3cTraceContext>,
+        request_span_override: Option<Span>,
     ) {
         match codex_request {
             // Handle Initialize internally so CodexMessageProcessor does not have to concern
@@ -597,7 +642,13 @@ impl MessageProcessor {
                 // inline the full `CodexMessageProcessor::process_request` future, which
                 // can otherwise push worker-thread stack usage over the edge.
                 self.codex_message_processor
-                    .process_request(connection_id, other, session.app_server_client_name.clone())
+                    .process_request(
+                        connection_id,
+                        other,
+                        session.app_server_client_name.clone(),
+                        request_trace_override,
+                        request_span_override,
+                    )
                     .boxed()
                     .await;
             }
@@ -674,3 +725,6 @@ impl MessageProcessor {
         }
     }
 }
+
+#[cfg(test)]
+mod tracing_tests;
