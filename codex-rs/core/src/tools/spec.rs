@@ -35,6 +35,7 @@ use serde::Serialize;
 use serde_json::Value as JsonValue;
 use serde_json::json;
 use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 use std::collections::HashMap;
 
 const SEARCH_TOOL_BM25_DESCRIPTION_TEMPLATE: &str =
@@ -92,6 +93,8 @@ pub(crate) struct ToolsConfig {
     shell_command_backend: ShellCommandBackendConfig,
     pub unified_exec_backend: UnifiedExecBackendConfig,
     pub allow_login_shell: bool,
+    pub requested_builtin_tools: Option<Vec<String>>,
+    pub manual_tool_execution: bool,
     pub apply_patch_tool_type: Option<ApplyPatchToolType>,
     pub web_search_mode: Option<WebSearchMode>,
     pub web_search_config: Option<WebSearchConfig>,
@@ -197,6 +200,8 @@ impl ToolsConfig {
             shell_command_backend,
             unified_exec_backend,
             allow_login_shell: true,
+            requested_builtin_tools: None,
+            manual_tool_execution: false,
             apply_patch_tool_type,
             web_search_mode: *web_search_mode,
             web_search_config: None,
@@ -229,6 +234,16 @@ impl ToolsConfig {
         self
     }
 
+    pub fn with_builtin_tools(mut self, builtin_tools: Option<Vec<String>>) -> Self {
+        self.requested_builtin_tools = builtin_tools;
+        self
+    }
+
+    pub fn with_manual_tool_execution(mut self, manual_tool_execution: bool) -> Self {
+        self.manual_tool_execution = manual_tool_execution;
+        self
+    }
+
     pub fn with_web_search_config(mut self, web_search_config: Option<WebSearchConfig>) -> Self {
         self.web_search_config = web_search_config;
         self
@@ -239,6 +254,78 @@ impl ToolsConfig {
         nested.code_mode_enabled = false;
         nested
     }
+
+    pub fn builtin_tool_enabled(&self, tool_name: &str) -> bool {
+        self.requested_builtin_tools
+            .as_ref()
+            .is_none_or(|requested| requested.iter().any(|name| name == tool_name))
+    }
+
+    pub fn should_force_manual_tool_execution(&self) -> bool {
+        self.manual_tool_execution
+    }
+}
+
+fn builtin_tool_names() -> BTreeSet<&'static str> {
+    BTreeSet::from([
+        "apply_patch",
+        "artifacts",
+        "close_agent",
+        "code_mode",
+        "container.exec",
+        "exec_command",
+        "grep_files",
+        "image_generation",
+        "js_repl",
+        "js_repl_reset",
+        "list_dir",
+        "list_mcp_resource_templates",
+        "list_mcp_resources",
+        "local_shell",
+        "read_file",
+        "read_mcp_resource",
+        "report_agent_job_result",
+        "request_permissions",
+        "request_user_input",
+        "resume_agent",
+        "search_tool_bm25",
+        "send_input",
+        "shell",
+        "shell_command",
+        "spawn_agent",
+        "spawn_agents_on_csv",
+        "test_sync_tool",
+        "update_plan",
+        "view_image",
+        "wait",
+        "web_search",
+        "write_stdin",
+    ])
+}
+
+pub fn validate_builtin_tools_request(requested_builtin_tools: &[String]) -> Result<(), String> {
+    let known_names = builtin_tool_names();
+    let invalid_names = requested_builtin_tools
+        .iter()
+        .filter(|name| !known_names.contains(name.as_str()))
+        .cloned()
+        .collect::<Vec<_>>();
+    if !invalid_names.is_empty() {
+        return Err(format!(
+            "unknown builtin tool name(s): {}",
+            invalid_names.join(", ")
+        ));
+    }
+    if requested_builtin_tools
+        .iter()
+        .any(|name| name == "write_stdin")
+        && !requested_builtin_tools
+            .iter()
+            .any(|name| name == "exec_command")
+    {
+        return Err("builtinTools cannot enable write_stdin without exec_command".to_string());
+    }
+    Ok(())
 }
 
 fn supports_image_generation(model_info: &ModelInfo) -> bool {
@@ -1987,34 +2074,34 @@ pub(crate) fn build_specs(
             .collect::<Vec<_>>();
         enabled_tool_names.sort();
         enabled_tool_names.dedup();
-        builder.push_spec(create_code_mode_tool(&enabled_tool_names));
-        builder.register_handler("code_mode", code_mode_handler);
+        builder.push_builtin_spec(create_code_mode_tool(&enabled_tool_names));
+        builder.register_builtin_handler("code_mode", code_mode_handler);
     }
 
     match &config.shell_type {
         ConfigShellToolType::Default => {
-            builder.push_spec_with_parallel_support(
+            builder.push_builtin_spec_with_parallel_support(
                 create_shell_tool(request_permission_enabled),
                 true,
             );
         }
         ConfigShellToolType::Local => {
-            builder.push_spec_with_parallel_support(ToolSpec::LocalShell {}, true);
+            builder.push_builtin_spec_with_parallel_support(ToolSpec::LocalShell {}, true);
         }
         ConfigShellToolType::UnifiedExec => {
-            builder.push_spec_with_parallel_support(
+            builder.push_builtin_spec_with_parallel_support(
                 create_exec_command_tool(config.allow_login_shell, request_permission_enabled),
                 true,
             );
-            builder.push_spec(create_write_stdin_tool());
-            builder.register_handler("exec_command", unified_exec_handler.clone());
-            builder.register_handler("write_stdin", unified_exec_handler);
+            builder.push_builtin_spec(create_write_stdin_tool());
+            builder.register_builtin_handler("exec_command", unified_exec_handler.clone());
+            builder.register_builtin_handler("write_stdin", unified_exec_handler);
         }
         ConfigShellToolType::Disabled => {
             // Do nothing.
         }
         ConfigShellToolType::ShellCommand => {
-            builder.push_spec_with_parallel_support(
+            builder.push_builtin_spec_with_parallel_support(
                 create_shell_command_tool(config.allow_login_shell, request_permission_enabled),
                 true,
             );
@@ -2023,59 +2110,66 @@ pub(crate) fn build_specs(
 
     if config.shell_type != ConfigShellToolType::Disabled {
         // Always register shell aliases so older prompts remain compatible.
-        builder.register_handler("shell", shell_handler.clone());
-        builder.register_handler("container.exec", shell_handler.clone());
-        builder.register_handler("local_shell", shell_handler);
-        builder.register_handler("shell_command", shell_command_handler);
+        builder.register_builtin_handler("shell", shell_handler.clone());
+        builder.register_builtin_handler("container.exec", shell_handler.clone());
+        builder.register_builtin_handler("local_shell", shell_handler);
+        builder.register_builtin_handler("shell_command", shell_command_handler);
     }
 
     if mcp_tools.is_some() {
-        builder.push_spec_with_parallel_support(create_list_mcp_resources_tool(), true);
-        builder.push_spec_with_parallel_support(create_list_mcp_resource_templates_tool(), true);
-        builder.push_spec_with_parallel_support(create_read_mcp_resource_tool(), true);
-        builder.register_handler("list_mcp_resources", mcp_resource_handler.clone());
-        builder.register_handler("list_mcp_resource_templates", mcp_resource_handler.clone());
-        builder.register_handler("read_mcp_resource", mcp_resource_handler);
+        builder.push_builtin_spec_with_parallel_support(create_list_mcp_resources_tool(), true);
+        builder.push_builtin_spec_with_parallel_support(
+            create_list_mcp_resource_templates_tool(),
+            true,
+        );
+        builder.push_builtin_spec_with_parallel_support(create_read_mcp_resource_tool(), true);
+        builder.register_builtin_handler("list_mcp_resources", mcp_resource_handler.clone());
+        builder
+            .register_builtin_handler("list_mcp_resource_templates", mcp_resource_handler.clone());
+        builder.register_builtin_handler("read_mcp_resource", mcp_resource_handler);
     }
 
-    builder.push_spec(PLAN_TOOL.clone());
-    builder.register_handler("update_plan", plan_handler);
+    builder.push_builtin_spec(PLAN_TOOL.clone());
+    builder.register_builtin_handler("update_plan", plan_handler);
 
     if config.js_repl_enabled {
-        builder.push_spec(create_js_repl_tool());
-        builder.push_spec(create_js_repl_reset_tool());
-        builder.register_handler("js_repl", js_repl_handler);
-        builder.register_handler("js_repl_reset", js_repl_reset_handler);
+        builder.push_builtin_spec(create_js_repl_tool());
+        builder.push_builtin_spec(create_js_repl_reset_tool());
+        builder.register_builtin_handler("js_repl", js_repl_handler);
+        builder.register_builtin_handler("js_repl_reset", js_repl_reset_handler);
     }
 
     if config.request_user_input {
-        builder.push_spec(create_request_user_input_tool(CollaborationModesConfig {
+        builder.push_builtin_spec(create_request_user_input_tool(CollaborationModesConfig {
             default_mode_request_user_input: config.default_mode_request_user_input,
         }));
-        builder.register_handler("request_user_input", request_user_input_handler);
+        builder.register_builtin_handler("request_user_input", request_user_input_handler);
     }
 
     if config.request_permissions_tool_enabled {
-        builder.push_spec(create_request_permissions_tool());
-        builder.register_handler("request_permissions", request_permissions_handler);
+        builder.push_builtin_spec(create_request_permissions_tool());
+        builder.register_builtin_handler("request_permissions", request_permissions_handler);
     }
 
     if config.search_tool {
         let app_tools = app_tools.unwrap_or_default();
-        builder.push_spec_with_parallel_support(create_search_tool_bm25_tool(&app_tools), true);
-        builder.register_handler(SEARCH_TOOL_BM25_TOOL_NAME, search_tool_handler);
+        builder.push_builtin_spec_with_parallel_support(
+            create_search_tool_bm25_tool(&app_tools),
+            true,
+        );
+        builder.register_builtin_handler(SEARCH_TOOL_BM25_TOOL_NAME, search_tool_handler);
     }
 
     if let Some(apply_patch_tool_type) = &config.apply_patch_tool_type {
         match apply_patch_tool_type {
             ApplyPatchToolType::Freeform => {
-                builder.push_spec(create_apply_patch_freeform_tool());
+                builder.push_builtin_spec(create_apply_patch_freeform_tool());
             }
             ApplyPatchToolType::Function => {
-                builder.push_spec(create_apply_patch_json_tool());
+                builder.push_builtin_spec(create_apply_patch_json_tool());
             }
         }
-        builder.register_handler("apply_patch", apply_patch_handler);
+        builder.register_builtin_handler("apply_patch", apply_patch_handler);
     }
 
     if config
@@ -2083,8 +2177,8 @@ pub(crate) fn build_specs(
         .contains(&"grep_files".to_string())
     {
         let grep_files_handler = Arc::new(GrepFilesHandler);
-        builder.push_spec_with_parallel_support(create_grep_files_tool(), true);
-        builder.register_handler("grep_files", grep_files_handler);
+        builder.push_builtin_spec_with_parallel_support(create_grep_files_tool(), true);
+        builder.register_builtin_handler("grep_files", grep_files_handler);
     }
 
     if config
@@ -2092,8 +2186,8 @@ pub(crate) fn build_specs(
         .contains(&"read_file".to_string())
     {
         let read_file_handler = Arc::new(ReadFileHandler);
-        builder.push_spec_with_parallel_support(create_read_file_tool(), true);
-        builder.register_handler("read_file", read_file_handler);
+        builder.push_builtin_spec_with_parallel_support(create_read_file_tool(), true);
+        builder.register_builtin_handler("read_file", read_file_handler);
     }
 
     if config
@@ -2102,8 +2196,8 @@ pub(crate) fn build_specs(
         .any(|tool| tool == "list_dir")
     {
         let list_dir_handler = Arc::new(ListDirHandler);
-        builder.push_spec_with_parallel_support(create_list_dir_tool(), true);
-        builder.register_handler("list_dir", list_dir_handler);
+        builder.push_builtin_spec_with_parallel_support(create_list_dir_tool(), true);
+        builder.register_builtin_handler("list_dir", list_dir_handler);
     }
 
     if config
@@ -2111,8 +2205,8 @@ pub(crate) fn build_specs(
         .contains(&"test_sync_tool".to_string())
     {
         let test_sync_handler = Arc::new(TestSyncHandler);
-        builder.push_spec_with_parallel_support(create_test_sync_tool(), true);
-        builder.register_handler("test_sync_tool", test_sync_handler);
+        builder.push_builtin_spec_with_parallel_support(create_test_sync_tool(), true);
+        builder.register_builtin_handler("test_sync_tool", test_sync_handler);
     }
 
     let external_web_access = match config.web_search_mode {
@@ -2132,7 +2226,7 @@ pub(crate) fn build_specs(
             ),
         };
 
-        builder.push_spec(ToolSpec::WebSearch {
+        builder.push_builtin_spec(ToolSpec::WebSearch {
             external_web_access: Some(external_web_access),
             filters: config
                 .web_search_config
@@ -2151,40 +2245,40 @@ pub(crate) fn build_specs(
     }
 
     if config.image_gen_tool {
-        builder.push_spec(ToolSpec::ImageGeneration {
+        builder.push_builtin_spec(ToolSpec::ImageGeneration {
             output_format: "png".to_string(),
         });
     }
 
-    builder.push_spec_with_parallel_support(create_view_image_tool(), true);
-    builder.register_handler("view_image", view_image_handler);
+    builder.push_builtin_spec_with_parallel_support(create_view_image_tool(), true);
+    builder.register_builtin_handler("view_image", view_image_handler);
 
     if config.artifact_tools {
-        builder.push_spec(create_artifacts_tool());
-        builder.register_handler("artifacts", artifacts_handler);
+        builder.push_builtin_spec(create_artifacts_tool());
+        builder.register_builtin_handler("artifacts", artifacts_handler);
     }
 
     if config.collab_tools {
         let multi_agent_handler = Arc::new(MultiAgentHandler);
-        builder.push_spec(create_spawn_agent_tool(config));
-        builder.push_spec(create_send_input_tool());
-        builder.push_spec(create_resume_agent_tool());
-        builder.push_spec(create_wait_tool());
-        builder.push_spec(create_close_agent_tool());
-        builder.register_handler("spawn_agent", multi_agent_handler.clone());
-        builder.register_handler("send_input", multi_agent_handler.clone());
-        builder.register_handler("resume_agent", multi_agent_handler.clone());
-        builder.register_handler("wait", multi_agent_handler.clone());
-        builder.register_handler("close_agent", multi_agent_handler);
+        builder.push_builtin_spec(create_spawn_agent_tool(config));
+        builder.push_builtin_spec(create_send_input_tool());
+        builder.push_builtin_spec(create_resume_agent_tool());
+        builder.push_builtin_spec(create_wait_tool());
+        builder.push_builtin_spec(create_close_agent_tool());
+        builder.register_builtin_handler("spawn_agent", multi_agent_handler.clone());
+        builder.register_builtin_handler("send_input", multi_agent_handler.clone());
+        builder.register_builtin_handler("resume_agent", multi_agent_handler.clone());
+        builder.register_builtin_handler("wait", multi_agent_handler.clone());
+        builder.register_builtin_handler("close_agent", multi_agent_handler);
     }
 
     if config.agent_jobs_tools {
         let agent_jobs_handler = Arc::new(BatchJobHandler);
-        builder.push_spec(create_spawn_agents_on_csv_tool());
-        builder.register_handler("spawn_agents_on_csv", agent_jobs_handler.clone());
+        builder.push_builtin_spec(create_spawn_agents_on_csv_tool());
+        builder.register_builtin_handler("spawn_agents_on_csv", agent_jobs_handler.clone());
         if config.agent_jobs_worker_tools {
-            builder.push_spec(create_report_agent_job_result_tool());
-            builder.register_handler("report_agent_job_result", agent_jobs_handler);
+            builder.push_builtin_spec(create_report_agent_job_result_tool());
+            builder.register_builtin_handler("report_agent_job_result", agent_jobs_handler);
         }
     }
 
@@ -3523,6 +3617,51 @@ mod tests {
         assert!(description.contains("(None currently enabled)"));
         assert!(description.contains("available apps."));
         assert!(!description.contains("{{app_names}}"));
+    }
+
+    #[test]
+    fn builtin_tools_allowlist_reports_enabled_builtin_names() {
+        let features = Features::with_defaults();
+        let model_info = model_info_from_models_json("gpt-5-codex");
+        let tools_config = ToolsConfig::new(&ToolsConfigParams {
+            model_info: &model_info,
+            features: &features,
+            web_search_mode: Some(WebSearchMode::Cached),
+            session_source: SessionSource::Cli,
+        })
+        .with_builtin_tools(Some(vec!["apply_patch".to_string()]));
+
+        assert!(tools_config.builtin_tool_enabled("apply_patch"));
+        assert!(!tools_config.builtin_tool_enabled("update_plan"));
+        assert!(!tools_config.builtin_tool_enabled("request_user_input"));
+    }
+
+    #[test]
+    fn validate_builtin_tools_request_rejects_invalid_name() {
+        assert_eq!(
+            validate_builtin_tools_request(&["not_a_tool".to_string()]),
+            Err("unknown builtin tool name(s): not_a_tool".to_string())
+        );
+    }
+
+    #[test]
+    fn validate_builtin_tools_request_accepts_alias_names() {
+        assert_eq!(
+            validate_builtin_tools_request(&[
+                "shell".to_string(),
+                "local_shell".to_string(),
+                "container.exec".to_string(),
+            ]),
+            Ok(())
+        );
+    }
+
+    #[test]
+    fn validate_builtin_tools_request_requires_exec_for_write_stdin() {
+        assert_eq!(
+            validate_builtin_tools_request(&["write_stdin".to_string()]),
+            Err("builtinTools cannot enable write_stdin without exec_command".to_string())
+        );
     }
 
     #[test]

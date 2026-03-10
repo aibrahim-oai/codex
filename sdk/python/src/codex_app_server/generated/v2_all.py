@@ -4,22 +4,18 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Dict, List
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, RootModel, conint
 
 
 class CodexAppServerProtocolV2(BaseModel):
-    pass
     model_config = ConfigDict(
         populate_by_name=True,
     )
 
 
 class AbsolutePathBuf(RootModel[str]):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: str = Field(
         ...,
         description="A path that is guaranteed to be absolute and normalized (though it is not guaranteed to be canonicalized or exist on the filesystem).\n\nIMPORTANT: When deserializing an `AbsolutePathBuf`, a base path must be set using [AbsolutePathBufGuard::new]. If no base path is set, the deserialization will fail unless the path being deserialized is already absolute.",
@@ -63,9 +59,6 @@ class AgentMessageContent1(BaseModel):
 
 
 class AgentMessageContent(RootModel[AgentMessageContent1]):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: AgentMessageContent1
 
 
@@ -92,7 +85,7 @@ class AgentStatus3(BaseModel):
         extra="forbid",
         populate_by_name=True,
     )
-    completed: str | None = None
+    completed: str | None
 
 
 class AgentStatus4(BaseModel):
@@ -121,9 +114,6 @@ class AgentStatus(
         | AgentStatus6
     ]
 ):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: (
         AgentStatus1
         | AgentStatus2
@@ -194,7 +184,8 @@ class AppToolConfig(BaseModel):
     enabled: bool | None = None
 
 
-AppToolsConfig = CodexAppServerProtocolV2
+class AppToolsConfig(CodexAppServerProtocolV2):
+    pass
 
 
 class AppsDefaultConfig(BaseModel):
@@ -255,9 +246,6 @@ class AskForApproval2(BaseModel):
 
 
 class AskForApproval(RootModel[AskForApproval1 | AskForApproval2]):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: AskForApproval1 | AskForApproval2
 
 
@@ -280,7 +268,7 @@ class CallToolResult(BaseModel):
         populate_by_name=True,
     )
     field_meta: Any | None = Field(None, alias="_meta")
-    content: List
+    content: list[Any]
     is_error: bool | None = Field(None, alias="isError")
     structured_content: Any | None = Field(None, alias="structuredContent")
 
@@ -531,7 +519,8 @@ class CodexErrorInfo2(BaseModel):
     )
 
 
-ResponseStreamConnectionFailed = HttpConnectionFailed
+class ResponseStreamConnectionFailed(HttpConnectionFailed):
+    pass
 
 
 class CodexErrorInfo3(BaseModel):
@@ -544,7 +533,8 @@ class CodexErrorInfo3(BaseModel):
     )
 
 
-ResponseStreamDisconnected = HttpConnectionFailed
+class ResponseStreamDisconnected(HttpConnectionFailed):
+    pass
 
 
 class CodexErrorInfo4(BaseModel):
@@ -557,7 +547,8 @@ class CodexErrorInfo4(BaseModel):
     )
 
 
-ResponseTooManyFailedAttempts = HttpConnectionFailed
+class ResponseTooManyFailedAttempts(HttpConnectionFailed):
+    pass
 
 
 class CodexErrorInfo5(BaseModel):
@@ -579,9 +570,6 @@ class CodexErrorInfo(
         | CodexErrorInfo5
     ]
 ):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: (
         CodexErrorInfo1
         | CodexErrorInfo2
@@ -673,9 +661,6 @@ class CommandAction4(BaseModel):
 class CommandAction(
     RootModel[CommandAction1 | CommandAction2 | CommandAction3 | CommandAction4]
 ):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: CommandAction1 | CommandAction2 | CommandAction3 | CommandAction4
 
 
@@ -684,7 +669,8 @@ class CommandExecOutputStream(Enum):
     stderr = "stderr"
 
 
-CommandExecResizeResponse = CodexAppServerProtocolV2
+class CommandExecResizeResponse(CodexAppServerProtocolV2):
+    pass
 
 
 class CommandExecResponse(BaseModel):
@@ -721,7 +707,8 @@ class CommandExecTerminateParams(BaseModel):
     )
 
 
-CommandExecTerminateResponse = CodexAppServerProtocolV2
+class CommandExecTerminateResponse(CodexAppServerProtocolV2):
+    pass
 
 
 class CommandExecWriteParams(BaseModel):
@@ -745,10 +732,12 @@ class CommandExecWriteParams(BaseModel):
     )
 
 
-CommandExecWriteResponse = CodexAppServerProtocolV2
+class CommandExecWriteResponse(CodexAppServerProtocolV2):
+    pass
 
 
-CommandExecutionOutputDeltaNotification = AgentMessageDeltaNotification
+class CommandExecutionOutputDeltaNotification(AgentMessageDeltaNotification):
+    pass
 
 
 class CommandExecutionStatus(Enum):
@@ -862,9 +851,6 @@ class ConfigLayerSource(
         | ConfigLayerSource7
     ]
 ):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: (
         ConfigLayerSource1
         | ConfigLayerSource2
@@ -924,9 +910,6 @@ class ContentItem3(BaseModel):
 
 
 class ContentItem(RootModel[ContentItem1 | ContentItem2 | ContentItem3]):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: ContentItem1 | ContentItem2 | ContentItem3
 
 
@@ -1004,9 +987,6 @@ class DynamicToolCallOutputContentItem2(BaseModel):
 class DynamicToolCallOutputContentItem(
     RootModel[DynamicToolCallOutputContentItem1 | DynamicToolCallOutputContentItem2]
 ):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: DynamicToolCallOutputContentItem1 | DynamicToolCallOutputContentItem2
 
 
@@ -1049,9 +1029,6 @@ class ElicitationRequest2(BaseModel):
 
 
 class ElicitationRequest(RootModel[ElicitationRequest1 | ElicitationRequest2]):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: ElicitationRequest1 | ElicitationRequest2
 
 
@@ -1389,7 +1366,7 @@ class EventMsg39(BaseModel):
     call_id: str = Field(
         ..., description="Identifier for the corresponding DynamicToolCallRequest."
     )
-    content_items: List[DynamicToolCallOutputContentItem] = Field(
+    content_items: list[DynamicToolCallOutputContentItem] = Field(
         ..., description="Dynamic tool response content items."
     )
     duration: Duration = Field(
@@ -1521,7 +1498,7 @@ class EventMsg52(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    custom_prompts: List[CustomPrompt]
+    custom_prompts: list[CustomPrompt]
     type: Type70 = Field(..., title="ListCustomPromptsResponseEventMsgType")
 
 
@@ -1752,7 +1729,7 @@ class ExternalAgentConfigDetectParams(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    cwds: List[str] | None = Field(
+    cwds: list[str] | None = Field(
         None,
         description="Zero or more working directories to include for repo-scoped detection.",
     )
@@ -1763,7 +1740,8 @@ class ExternalAgentConfigDetectParams(BaseModel):
     )
 
 
-ExternalAgentConfigImportResponse = CodexAppServerProtocolV2
+class ExternalAgentConfigImportResponse(CodexAppServerProtocolV2):
+    pass
 
 
 class ExternalAgentConfigMigrationItemType(Enum):
@@ -1778,7 +1756,7 @@ class FeedbackUploadParams(BaseModel):
         populate_by_name=True,
     )
     classification: str
-    extra_log_files: List[str] | None = Field(None, alias="extraLogFiles")
+    extra_log_files: list[str] | None = Field(None, alias="extraLogFiles")
     include_logs: bool = Field(..., alias="includeLogs")
     reason: str | None = None
     thread_id: str | None = Field(None, alias="threadId")
@@ -1829,21 +1807,19 @@ class FileChange3(BaseModel):
 
 
 class FileChange(RootModel[FileChange1 | FileChange2 | FileChange3]):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: FileChange1 | FileChange2 | FileChange3
 
 
-FileChangeOutputDeltaNotification = AgentMessageDeltaNotification
+class FileChangeOutputDeltaNotification(AgentMessageDeltaNotification):
+    pass
 
 
 class FileSystemPermissions(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    read: List[AbsolutePathBuf] | None = None
-    write: List[AbsolutePathBuf] | None = None
+    read: list[AbsolutePathBuf] | None = None
+    write: list[AbsolutePathBuf] | None = None
 
 
 class ForcedLoginMethod(Enum):
@@ -1865,7 +1841,7 @@ class FuzzyFileSearchParams(BaseModel):
     )
     cancellation_token: str | None = Field(None, alias="cancellationToken")
     query: str
-    roots: List[str]
+    roots: list[str]
 
 
 class FuzzyFileSearchResult(BaseModel):
@@ -1873,7 +1849,7 @@ class FuzzyFileSearchResult(BaseModel):
         populate_by_name=True,
     )
     file_name: str
-    indices: List[conint(ge=0)] | None = None
+    indices: list[conint(ge=0)] | None = None
     path: str
     root: str
     score: conint(ge=0)
@@ -1890,7 +1866,7 @@ class FuzzyFileSearchSessionUpdatedNotification(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    files: List[FuzzyFileSearchResult]
+    files: list[FuzzyFileSearchResult]
     query: str
     session_id: str = Field(..., alias="sessionId")
 
@@ -1912,8 +1888,8 @@ class GhostCommit(BaseModel):
     )
     id: str
     parent: str | None = None
-    preexisting_untracked_dirs: List[str]
-    preexisting_untracked_files: List[str]
+    preexisting_untracked_dirs: list[str]
+    preexisting_untracked_files: list[str]
 
 
 class GitInfo(BaseModel):
@@ -1994,7 +1970,7 @@ class InitializeCapabilities(BaseModel):
         alias="experimentalApi",
         description="Opt into receiving experimental API methods and fields.",
     )
-    opt_out_notification_methods: List[str] | None = Field(
+    opt_out_notification_methods: list[str] | None = Field(
         None,
         alias="optOutNotificationMethods",
         description="Exact notification method names that should be suppressed for this connection (for example `codex/event/session_configured`).",
@@ -2034,8 +2010,8 @@ class LocalShellAction1(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    command: List[str]
-    env: Dict[str, Any] | None = None
+    command: list[str]
+    env: dict[str, Any] | None = None
     timeout_ms: conint(ge=0) | None = None
     type: Type104 = Field(..., title="ExecLocalShellActionType")
     user: str | None = None
@@ -2043,9 +2019,6 @@ class LocalShellAction1(BaseModel):
 
 
 class LocalShellAction(RootModel[LocalShellAction1]):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: LocalShellAction1
 
 
@@ -2099,9 +2072,6 @@ class LoginAccountParams3(BaseModel):
 class LoginAccountParams(
     RootModel[LoginAccountParams1 | LoginAccountParams2 | LoginAccountParams3]
 ):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: LoginAccountParams1 | LoginAccountParams2 | LoginAccountParams3 = Field(
         ..., title="LoginAccountParams"
     )
@@ -2137,15 +2107,13 @@ class LoginAccountResponse3(BaseModel):
 class LoginAccountResponse(
     RootModel[LoginAccountResponse1 | LoginAccountResponse2 | LoginAccountResponse3]
 ):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: LoginAccountResponse1 | LoginAccountResponse2 | LoginAccountResponse3 = Field(
         ..., title="LoginAccountResponse"
     )
 
 
-LogoutAccountResponse = CodexAppServerProtocolV2
+class LogoutAccountResponse(CodexAppServerProtocolV2):
+    pass
 
 
 class MacOsAutomationPermission1(Enum):
@@ -2158,15 +2126,12 @@ class MacOsAutomationPermission2(BaseModel):
         extra="forbid",
         populate_by_name=True,
     )
-    bundle_ids: List[str]
+    bundle_ids: list[str]
 
 
 class MacOsAutomationPermission(
     RootModel[MacOsAutomationPermission1 | MacOsAutomationPermission2]
 ):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: MacOsAutomationPermission1 | MacOsAutomationPermission2
 
 
@@ -2182,7 +2147,7 @@ class MacOsSeatbeltProfileExtensions(BaseModel):
     )
     macos_accessibility: bool | None = False
     macos_automation: MacOsAutomationPermission | None = Field(
-        default_factory=lambda: MacOsAutomationPermission.model_validate("none")
+        default_factory=lambda: MacOsAutomationPermission("none")
     )
     macos_calendar: bool | None = False
     macos_preferences: MacOsPreferencesPermission | None = "read_only"
@@ -2220,7 +2185,7 @@ class McpServerOauthLoginParams(BaseModel):
         populate_by_name=True,
     )
     name: str
-    scopes: List[str] | None = None
+    scopes: list[str] | None = None
     timeout_secs: int | None = Field(None, alias="timeoutSecs")
 
 
@@ -2231,7 +2196,8 @@ class McpServerOauthLoginResponse(BaseModel):
     authorization_url: str = Field(..., alias="authorizationUrl")
 
 
-McpServerRefreshResponse = CodexAppServerProtocolV2
+class McpServerRefreshResponse(CodexAppServerProtocolV2):
+    pass
 
 
 class McpStartupFailure(BaseModel):
@@ -2292,9 +2258,6 @@ class McpStartupStatus(
         McpStartupStatus1 | McpStartupStatus2 | McpStartupStatus3 | McpStartupStatus4
     ]
 ):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: McpStartupStatus1 | McpStartupStatus2 | McpStartupStatus3 | McpStartupStatus4
 
 
@@ -2319,7 +2282,7 @@ class McpToolCallResult(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    content: List
+    content: list[Any]
     structured_content: Any | None = Field(None, alias="structuredContent")
 
 
@@ -2338,7 +2301,8 @@ class ModeKind(Enum):
     default = "default"
 
 
-ModelAvailabilityNux = McpToolCallError
+class ModelAvailabilityNux(McpToolCallError):
+    pass
 
 
 class ModelListParams(BaseModel):
@@ -2413,16 +2377,16 @@ class NetworkRequirements(BaseModel):
         populate_by_name=True,
     )
     allow_local_binding: bool | None = Field(None, alias="allowLocalBinding")
-    allow_unix_sockets: List[str] | None = Field(None, alias="allowUnixSockets")
+    allow_unix_sockets: list[str] | None = Field(None, alias="allowUnixSockets")
     allow_upstream_proxy: bool | None = Field(None, alias="allowUpstreamProxy")
-    allowed_domains: List[str] | None = Field(None, alias="allowedDomains")
+    allowed_domains: list[str] | None = Field(None, alias="allowedDomains")
     dangerously_allow_all_unix_sockets: bool | None = Field(
         None, alias="dangerouslyAllowAllUnixSockets"
     )
     dangerously_allow_non_loopback_proxy: bool | None = Field(
         None, alias="dangerouslyAllowNonLoopbackProxy"
     )
-    denied_domains: List[str] | None = Field(None, alias="deniedDomains")
+    denied_domains: list[str] | None = Field(None, alias="deniedDomains")
     enabled: bool | None = None
     http_port: conint(ge=0) | None = Field(None, alias="httpPort")
     socks_port: conint(ge=0) | None = Field(None, alias="socksPort")
@@ -2475,9 +2439,6 @@ class ParsedCommand4(BaseModel):
 class ParsedCommand(
     RootModel[ParsedCommand1 | ParsedCommand2 | ParsedCommand3 | ParsedCommand4]
 ):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: ParsedCommand1 | ParsedCommand2 | ParsedCommand3 | ParsedCommand4
 
 
@@ -2506,9 +2467,6 @@ class PatchChangeKind3(BaseModel):
 class PatchChangeKind(
     RootModel[PatchChangeKind1 | PatchChangeKind2 | PatchChangeKind3]
 ):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: PatchChangeKind1 | PatchChangeKind2 | PatchChangeKind3
 
 
@@ -2527,7 +2485,8 @@ class Personality(Enum):
     pragmatic = "pragmatic"
 
 
-PlanDeltaNotification = AgentMessageDeltaNotification
+class PlanDeltaNotification(AgentMessageDeltaNotification):
+    pass
 
 
 class PlanType(Enum):
@@ -2554,7 +2513,7 @@ class PluginInstallResponse(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    apps_needing_auth: List[AppSummary] = Field(..., alias="appsNeedingAuth")
+    apps_needing_auth: list[AppSummary] = Field(..., alias="appsNeedingAuth")
 
 
 class PluginInterface(BaseModel):
@@ -2562,7 +2521,7 @@ class PluginInterface(BaseModel):
         populate_by_name=True,
     )
     brand_color: str | None = Field(None, alias="brandColor")
-    capabilities: List[str]
+    capabilities: list[str]
     category: str | None = None
     composer_icon: AbsolutePathBuf | None = Field(None, alias="composerIcon")
     default_prompt: str | None = Field(None, alias="defaultPrompt")
@@ -2571,7 +2530,7 @@ class PluginInterface(BaseModel):
     logo: AbsolutePathBuf | None = None
     long_description: str | None = Field(None, alias="longDescription")
     privacy_policy_url: str | None = Field(None, alias="privacyPolicyUrl")
-    screenshots: List[AbsolutePathBuf]
+    screenshots: list[AbsolutePathBuf]
     short_description: str | None = Field(None, alias="shortDescription")
     terms_of_service_url: str | None = Field(None, alias="termsOfServiceUrl")
     website_url: str | None = Field(None, alias="websiteUrl")
@@ -2581,7 +2540,7 @@ class PluginListParams(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    cwds: List[AbsolutePathBuf] | None = Field(
+    cwds: list[AbsolutePathBuf] | None = Field(
         None,
         description="Optional working directories used to discover repo marketplaces. When omitted, only home-scoped marketplaces and the official curated marketplace are considered.",
     )
@@ -2600,9 +2559,6 @@ class PluginSource1(BaseModel):
 
 
 class PluginSource(RootModel[PluginSource1]):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: PluginSource1
 
 
@@ -2625,7 +2581,8 @@ class PluginUninstallParams(BaseModel):
     plugin_id: str = Field(..., alias="pluginId")
 
 
-PluginUninstallResponse = CodexAppServerProtocolV2
+class PluginUninstallResponse(CodexAppServerProtocolV2):
+    pass
 
 
 class ProductSurface(Enum):
@@ -2655,7 +2612,9 @@ class ReadOnlyAccess1(BaseModel):
     include_platform_defaults: bool | None = Field(
         True, alias="includePlatformDefaults"
     )
-    readable_roots: List[AbsolutePathBuf] | None = Field([], alias="readableRoots")
+    readable_roots: list[AbsolutePathBuf] | None = Field(
+        default_factory=list, alias="readableRoots"
+    )
     type: Type119 = Field(..., title="RestrictedReadOnlyAccessType")
 
 
@@ -2671,9 +2630,6 @@ class ReadOnlyAccess2(BaseModel):
 
 
 class ReadOnlyAccess(RootModel[ReadOnlyAccess1 | ReadOnlyAccess2]):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: ReadOnlyAccess1 | ReadOnlyAccess2
 
 
@@ -2801,9 +2757,6 @@ class ReasoningItemContent2(BaseModel):
 
 
 class ReasoningItemContent(RootModel[ReasoningItemContent1 | ReasoningItemContent2]):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: ReasoningItemContent1 | ReasoningItemContent2
 
 
@@ -2820,9 +2773,6 @@ class ReasoningItemReasoningSummary1(BaseModel):
 
 
 class ReasoningItemReasoningSummary(RootModel[ReasoningItemReasoningSummary1]):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: ReasoningItemReasoningSummary1
 
 
@@ -2837,9 +2787,6 @@ class ReasoningSummary2(Enum):
 
 
 class ReasoningSummary(RootModel[ReasoningSummary1 | ReasoningSummary2]):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: ReasoningSummary1 | ReasoningSummary2 = Field(
         ...,
         description="A summary of the reasoning performed by the model. This can be useful for debugging and understanding the model's reasoning process. See https://platform.openai.com/docs/guides/reasoning?api-mode=responses#reasoning-summaries",
@@ -2888,9 +2835,6 @@ class RemoteSkillSummary(BaseModel):
 
 
 class RequestId(RootModel[str | int]):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: str | int
 
 
@@ -2913,7 +2857,7 @@ class Resource(BaseModel):
     field_meta: Any | None = Field(None, alias="_meta")
     annotations: Any | None = None
     description: str | None = None
-    icons: List | None = None
+    icons: list[Any] | None = None
     mime_type: str | None = Field(None, alias="mimeType")
     name: str
     size: int | None = None
@@ -2941,7 +2885,7 @@ class ResponseItem1(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    content: List[ContentItem]
+    content: list[ContentItem]
     end_turn: bool | None = None
     id: str | None = None
     phase: MessagePhase | None = None
@@ -2957,10 +2901,10 @@ class ResponseItem2(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    content: List[ReasoningItemContent] | None = None
+    content: list[ReasoningItemContent] | None = None
     encrypted_content: str | None = None
     id: str
-    summary: List[ReasoningItemReasoningSummary]
+    summary: list[ReasoningItemReasoningSummary]
     type: Type125 = Field(..., title="ReasoningResponseItemType")
 
 
@@ -3079,7 +3023,7 @@ class ResponsesApiWebSearchAction1(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    queries: List[str] | None = None
+    queries: list[str] | None = None
     query: str | None = None
     type: Type5 = Field(..., title="SearchResponsesApiWebSearchActionType")
 
@@ -3124,9 +3068,6 @@ class ResponsesApiWebSearchAction(
         | ResponsesApiWebSearchAction4
     ]
 ):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: (
         ResponsesApiWebSearchAction1
         | ResponsesApiWebSearchAction2
@@ -3152,9 +3093,6 @@ class ResultOfCallToolResultOrString2(BaseModel):
 class ResultOfCallToolResultOrString(
     RootModel[ResultOfCallToolResultOrString1 | ResultOfCallToolResultOrString2]
 ):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: ResultOfCallToolResultOrString1 | ResultOfCallToolResultOrString2
 
 
@@ -3166,7 +3104,7 @@ class ApprovedExecpolicyAmendment(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    proposed_execpolicy_amendment: List[str]
+    proposed_execpolicy_amendment: list[str]
 
 
 class ReviewDecision2(BaseModel):
@@ -3194,7 +3132,8 @@ class ReviewDelivery(Enum):
     detached = "detached"
 
 
-ReviewLineRange = ByteRange
+class ReviewLineRange(ByteRange):
+    pass
 
 
 class Type140(Enum):
@@ -3251,9 +3190,6 @@ class ReviewTarget4(BaseModel):
 class ReviewTarget(
     RootModel[ReviewTarget1 | ReviewTarget2 | ReviewTarget3 | ReviewTarget4]
 ):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: ReviewTarget1 | ReviewTarget2 | ReviewTarget3 | ReviewTarget4
 
 
@@ -3283,7 +3219,7 @@ class SandboxPolicy2(BaseModel):
         populate_by_name=True,
     )
     access: ReadOnlyAccess | None = Field(
-        default_factory=lambda: ReadOnlyAccess.model_validate({"type": "fullAccess"})
+        default_factory=lambda: ReadOnlyAccess({"type": "fullAccess"})
     )
     network_access: bool | None = Field(False, alias="networkAccess")
     type: Type145 = Field(..., title="ReadOnlySandboxPolicyType")
@@ -3313,19 +3249,18 @@ class SandboxPolicy4(BaseModel):
     exclude_tmpdir_env_var: bool | None = Field(False, alias="excludeTmpdirEnvVar")
     network_access: bool | None = Field(False, alias="networkAccess")
     read_only_access: ReadOnlyAccess | None = Field(
-        default_factory=lambda: ReadOnlyAccess.model_validate({"type": "fullAccess"}),
+        default_factory=lambda: ReadOnlyAccess({"type": "fullAccess"}),
         alias="readOnlyAccess",
     )
     type: Type147 = Field(..., title="WorkspaceWriteSandboxPolicyType")
-    writable_roots: List[AbsolutePathBuf] | None = Field([], alias="writableRoots")
+    writable_roots: list[AbsolutePathBuf] | None = Field(
+        default_factory=list, alias="writableRoots"
+    )
 
 
 class SandboxPolicy(
     RootModel[SandboxPolicy1 | SandboxPolicy2 | SandboxPolicy3 | SandboxPolicy4]
 ):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: SandboxPolicy1 | SandboxPolicy2 | SandboxPolicy3 | SandboxPolicy4
 
 
@@ -3336,7 +3271,7 @@ class SandboxWorkspaceWrite(BaseModel):
     exclude_slash_tmp: bool | None = False
     exclude_tmpdir_env_var: bool | None = False
     network_access: bool | None = False
-    writable_roots: List[str] | None = []
+    writable_roots: list[str] | None = []
 
 
 class Method50(Enum):
@@ -3730,7 +3665,8 @@ class SkillToolDependency(BaseModel):
     value: str
 
 
-SkillsChangedNotification = CodexAppServerProtocolV2
+class SkillsChangedNotification(CodexAppServerProtocolV2):
+    pass
 
 
 class SkillsConfigWriteParams(BaseModel):
@@ -3753,14 +3689,14 @@ class SkillsListExtraRootsForCwd(BaseModel):
         populate_by_name=True,
     )
     cwd: str
-    extra_user_roots: List[str] = Field(..., alias="extraUserRoots")
+    extra_user_roots: list[str] = Field(..., alias="extraUserRoots")
 
 
 class SkillsListParams(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    cwds: List[str] | None = Field(
+    cwds: list[str] | None = Field(
         None,
         description="When empty, defaults to the current session working directory.",
     )
@@ -3769,7 +3705,7 @@ class SkillsListParams(BaseModel):
         alias="forceReload",
         description="When true, bypass the skills cache and re-scan skills from disk.",
     )
-    per_cwd_extra_user_roots: List[SkillsListExtraRootsForCwd] | None = Field(
+    per_cwd_extra_user_roots: list[SkillsListExtraRootsForCwd] | None = Field(
         None,
         alias="perCwdExtraUserRoots",
         description="Optional per-cwd extra roots to scan as user-scoped skills.",
@@ -3789,7 +3725,7 @@ class SkillsRemoteReadResponse(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    data: List[RemoteSkillSummary]
+    data: list[RemoteSkillSummary]
 
 
 class SkillsRemoteWriteParams(BaseModel):
@@ -3876,22 +3812,28 @@ class ThreadActiveFlag(Enum):
     waiting_on_user_input = "waitingOnUserInput"
 
 
-ThreadArchiveParams = FeedbackUploadResponse
+class ThreadArchiveParams(FeedbackUploadResponse):
+    pass
 
 
-ThreadArchiveResponse = CodexAppServerProtocolV2
+class ThreadArchiveResponse(CodexAppServerProtocolV2):
+    pass
 
 
-ThreadArchivedNotification = FeedbackUploadResponse
+class ThreadArchivedNotification(FeedbackUploadResponse):
+    pass
 
 
-ThreadClosedNotification = FeedbackUploadResponse
+class ThreadClosedNotification(FeedbackUploadResponse):
+    pass
 
 
-ThreadCompactStartParams = FeedbackUploadResponse
+class ThreadCompactStartParams(FeedbackUploadResponse):
+    pass
 
 
-ThreadCompactStartResponse = CodexAppServerProtocolV2
+class ThreadCompactStartResponse(CodexAppServerProtocolV2):
+    pass
 
 
 class ThreadForkParams(BaseModel):
@@ -3900,7 +3842,7 @@ class ThreadForkParams(BaseModel):
     )
     approval_policy: AskForApproval | None = Field(None, alias="approvalPolicy")
     base_instructions: str | None = Field(None, alias="baseInstructions")
-    config: Dict[str, Any] | None = None
+    config: dict[str, Any] | None = None
     cwd: str | None = None
     developer_instructions: str | None = Field(None, alias="developerInstructions")
     model: str | None = Field(
@@ -3913,9 +3855,6 @@ class ThreadForkParams(BaseModel):
 
 
 class ThreadId(RootModel[str]):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: str
 
 
@@ -3954,9 +3893,9 @@ class ThreadItem4(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    content: List[str] | None = []
+    content: list[str] | None = []
     id: str
-    summary: List[str] | None = []
+    summary: list[str] | None = []
     type: Type125 = Field(..., title="ReasoningThreadItemType")
 
 
@@ -3974,7 +3913,7 @@ class ThreadItem5(BaseModel):
         description="The command's output, aggregated from stdout and stderr.",
     )
     command: str = Field(..., description="The command to be executed.")
-    command_actions: List[CommandAction] = Field(
+    command_actions: list[CommandAction] = Field(
         ...,
         alias="commandActions",
         description="A best-effort parsing of the command to understand the action(s) it will perform. This returns a list of CommandAction objects because a single shell command may be composed of many commands piped together.",
@@ -4034,7 +3973,7 @@ class ThreadItem8(BaseModel):
         populate_by_name=True,
     )
     arguments: Any
-    content_items: List[DynamicToolCallOutputContentItem] | None = Field(
+    content_items: list[DynamicToolCallOutputContentItem] | None = Field(
         None, alias="contentItems"
     )
     duration_ms: int | None = Field(
@@ -4139,7 +4078,7 @@ class ThreadLoadedListResponse(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    data: List[str] = Field(
+    data: list[str] = Field(
         ..., description="Thread ids for sessions currently loaded in memory."
     )
     next_cursor: str | None = Field(
@@ -4256,7 +4195,7 @@ class ThreadResumeParams(BaseModel):
     )
     approval_policy: AskForApproval | None = Field(None, alias="approvalPolicy")
     base_instructions: str | None = Field(None, alias="baseInstructions")
-    config: Dict[str, Any] | None = None
+    config: dict[str, Any] | None = None
     cwd: str | None = None
     developer_instructions: str | None = Field(None, alias="developerInstructions")
     model: str | None = Field(
@@ -4289,7 +4228,8 @@ class ThreadSetNameParams(BaseModel):
     thread_id: str = Field(..., alias="threadId")
 
 
-ThreadSetNameResponse = CodexAppServerProtocolV2
+class ThreadSetNameResponse(CodexAppServerProtocolV2):
+    pass
 
 
 class ThreadSortKey(Enum):
@@ -4316,7 +4256,7 @@ class ThreadStartParams(BaseModel):
     )
     approval_policy: AskForApproval | None = Field(None, alias="approvalPolicy")
     base_instructions: str | None = Field(None, alias="baseInstructions")
-    config: Dict[str, Any] | None = None
+    config: dict[str, Any] | None = None
     cwd: str | None = None
     developer_instructions: str | None = Field(None, alias="developerInstructions")
     ephemeral: bool | None = None
@@ -4369,16 +4309,13 @@ class ThreadStatus4(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    active_flags: List[ThreadActiveFlag] = Field(..., alias="activeFlags")
+    active_flags: list[ThreadActiveFlag] = Field(..., alias="activeFlags")
     type: Type166 = Field(..., title="ActiveThreadStatusType")
 
 
 class ThreadStatus(
     RootModel[ThreadStatus1 | ThreadStatus2 | ThreadStatus3 | ThreadStatus4]
 ):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: ThreadStatus1 | ThreadStatus2 | ThreadStatus3 | ThreadStatus4
 
 
@@ -4390,13 +4327,16 @@ class ThreadStatusChangedNotification(BaseModel):
     thread_id: str = Field(..., alias="threadId")
 
 
-ThreadUnarchiveParams = FeedbackUploadResponse
+class ThreadUnarchiveParams(FeedbackUploadResponse):
+    pass
 
 
-ThreadUnarchivedNotification = FeedbackUploadResponse
+class ThreadUnarchivedNotification(FeedbackUploadResponse):
+    pass
 
 
-ThreadUnsubscribeParams = FeedbackUploadResponse
+class ThreadUnsubscribeParams(FeedbackUploadResponse):
+    pass
 
 
 class ThreadUnsubscribeStatus(Enum):
@@ -4443,7 +4383,7 @@ class Tool(BaseModel):
     field_meta: Any | None = Field(None, alias="_meta")
     annotations: Any | None = None
     description: str | None = None
-    icons: List | None = None
+    icons: list[Any] | None = None
     input_schema: Any = Field(..., alias="inputSchema")
     name: str
     output_schema: Any | None = Field(None, alias="outputSchema")
@@ -4474,10 +4414,12 @@ class TurnError(BaseModel):
     message: str
 
 
-TurnInterruptParams = ContextCompactedNotification
+class TurnInterruptParams(ContextCompactedNotification):
+    pass
 
 
-TurnInterruptResponse = CodexAppServerProtocolV2
+class TurnInterruptResponse(CodexAppServerProtocolV2):
+    pass
 
 
 class Type167(Enum):
@@ -4492,7 +4434,7 @@ class TurnItem2(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    content: List[AgentMessageContent]
+    content: list[AgentMessageContent]
     id: str
     phase: MessagePhase | None = Field(
         None,
@@ -4523,8 +4465,8 @@ class TurnItem4(BaseModel):
         populate_by_name=True,
     )
     id: str
-    raw_content: List[str] | None = []
-    summary_text: List[str]
+    raw_content: list[str] | None = []
+    summary_text: list[str]
     type: Type170 = Field(..., title="ReasoningTurnItemType")
 
 
@@ -4595,8 +4537,8 @@ class UserInput1(BaseModel):
         populate_by_name=True,
     )
     text: str
-    text_elements: List[TextElement] | None = Field(
-        [],
+    text_elements: list[TextElement] | None = Field(
+        default_factory=list,
         description="UI-defined spans within `text` used to render or persist special elements.",
     )
     type: Type122 = Field(..., title="TextUserInputType")
@@ -4655,9 +4597,6 @@ class UserInput5(BaseModel):
 class UserInput(
     RootModel[UserInput1 | UserInput2 | UserInput3 | UserInput4 | UserInput5]
 ):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: UserInput1 | UserInput2 | UserInput3 | UserInput4 | UserInput5
 
 
@@ -4671,7 +4610,7 @@ class WebSearchAction1(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    queries: List[str] | None = None
+    queries: list[str] | None = None
     query: str | None = None
     type: Type5 = Field(..., title="SearchWebSearchActionType")
 
@@ -4711,9 +4650,6 @@ class WebSearchAction4(BaseModel):
 class WebSearchAction(
     RootModel[WebSearchAction1 | WebSearchAction2 | WebSearchAction3 | WebSearchAction4]
 ):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: WebSearchAction1 | WebSearchAction2 | WebSearchAction3 | WebSearchAction4
 
 
@@ -4739,7 +4675,7 @@ class WebSearchToolConfig(BaseModel):
         extra="forbid",
         populate_by_name=True,
     )
-    allowed_domains: List[str] | None = None
+    allowed_domains: list[str] | None = None
     context_size: Verbosity | None = None
     location: WebSearchLocation | None = None
 
@@ -4770,7 +4706,7 @@ class WindowsWorldWritableWarningNotification(BaseModel):
     )
     extra_count: conint(ge=0) = Field(..., alias="extraCount")
     failed_scan: bool = Field(..., alias="failedScan")
-    sample_paths: List[str] = Field(..., alias="samplePaths")
+    sample_paths: list[str] = Field(..., alias="samplePaths")
 
 
 class WriteStatus(Enum):
@@ -4788,9 +4724,6 @@ class Account2(BaseModel):
 
 
 class Account(RootModel[Account1 | Account2]):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: Account1 | Account2
 
 
@@ -4818,19 +4751,19 @@ class AppMetadata(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    categories: List[str] | None = None
+    categories: list[str] | None = None
     developer: str | None = None
     first_party_requires_install: bool | None = Field(
         None, alias="firstPartyRequiresInstall"
     )
     first_party_type: str | None = Field(None, alias="firstPartyType")
     review: AppReview | None = None
-    screenshots: List[AppScreenshot] | None = None
+    screenshots: list[AppScreenshot] | None = None
     seo_description: str | None = Field(None, alias="seoDescription")
     show_in_composer_when_unlinked: bool | None = Field(
         None, alias="showInComposerWhenUnlinked"
     )
-    sub_categories: List[str] | None = Field(None, alias="subCategories")
+    sub_categories: list[str] | None = Field(None, alias="subCategories")
     version: str | None = None
     version_id: str | None = Field(None, alias="versionId")
     version_notes: str | None = Field(None, alias="versionNotes")
@@ -5293,7 +5226,7 @@ class CommandExecParams(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    command: List[str] = Field(
+    command: list[str] = Field(
         ..., description="Command argv vector. Empty arrays are rejected."
     )
     cwd: str | None = Field(
@@ -5309,7 +5242,7 @@ class CommandExecParams(BaseModel):
         alias="disableTimeout",
         description="Disable the timeout entirely for this request.\n\nCannot be combined with `timeoutMs`.",
     )
-    env: Dict[str, Any] | None = Field(
+    env: dict[str, Any] | None = Field(
         None,
         description="Optional environment overrides merged into the server-computed environment.\n\nMatching names override inherited values. Set a key to `null` to unset an inherited variable.",
     )
@@ -5398,19 +5331,19 @@ class ConfigRequirements(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    allowed_approval_policies: List[AskForApproval] | None = Field(
+    allowed_approval_policies: list[AskForApproval] | None = Field(
         None, alias="allowedApprovalPolicies"
     )
-    allowed_sandbox_modes: List[SandboxMode] | None = Field(
+    allowed_sandbox_modes: list[SandboxMode] | None = Field(
         None, alias="allowedSandboxModes"
     )
-    allowed_web_search_modes: List[WebSearchMode] | None = Field(
+    allowed_web_search_modes: list[WebSearchMode] | None = Field(
         None, alias="allowedWebSearchModes"
     )
     enforce_residency: ResidencyRequirement | None = Field(
         None, alias="enforceResidency"
     )
-    feature_requirements: Dict[str, Any] | None = Field(
+    feature_requirements: dict[str, Any] | None = Field(
         None, alias="featureRequirements"
     )
 
@@ -5500,17 +5433,17 @@ class EventMsg13(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    images: List[str] | None = Field(
+    images: list[str] | None = Field(
         None,
         description="Image URLs sourced from `UserInput::Image`. These are safe to replay in legacy UI history events and correspond to images sent to the model.",
     )
-    local_images: List[str] | None = Field(
+    local_images: list[str] | None = Field(
         [],
         description="Local file paths sourced from `UserInput::LocalImage`. These are kept so the UI can reattach images when editing history, and should not be sent to the model or treated as API-ready URLs.",
     )
     message: str
-    text_elements: List[TextElement] | None = Field(
-        [],
+    text_elements: list[TextElement] | None = Field(
+        default_factory=list,
         description="UI-defined spans within `message` used to render or persist special elements.",
     )
     type: Type31 = Field(..., title="UserMessageEventMsgType")
@@ -5538,9 +5471,9 @@ class EventMsg23(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    cancelled: List[str]
-    failed: List[McpStartupFailure]
-    ready: List[str]
+    cancelled: list[str]
+    failed: list[McpStartupFailure]
+    ready: list[str]
     type: Type41 = Field(..., title="McpStartupCompleteEventMsgType")
 
 
@@ -5590,7 +5523,7 @@ class EventMsg30(BaseModel):
         ...,
         description="Identifier so this can be paired with the ExecCommandEnd event.",
     )
-    command: List[str] = Field(..., description="The command to be executed.")
+    command: list[str] = Field(..., description="The command to be executed.")
     cwd: str = Field(
         ...,
         description="The command's working directory if not the default cwd for the agent.",
@@ -5599,7 +5532,7 @@ class EventMsg30(BaseModel):
         None,
         description="Raw input sent to a unified exec session (if this is an interaction event).",
     )
-    parsed_cmd: List[ParsedCommand]
+    parsed_cmd: list[ParsedCommand]
     process_id: str | None = Field(
         None, description="Identifier for the underlying PTY process (when available)."
     )
@@ -5635,7 +5568,7 @@ class EventMsg33(BaseModel):
     call_id: str = Field(
         ..., description="Identifier for the ExecCommandBegin that finished."
     )
-    command: List[str] = Field(..., description="The command that was executed.")
+    command: list[str] = Field(..., description="The command that was executed.")
     cwd: str = Field(
         ...,
         description="The command's working directory if not the default cwd for the agent.",
@@ -5651,7 +5584,7 @@ class EventMsg33(BaseModel):
         None,
         description="Raw input sent to a unified exec session (if this is an interaction event).",
     )
-    parsed_cmd: List[ParsedCommand]
+    parsed_cmd: list[ParsedCommand]
     process_id: str | None = Field(
         None, description="Identifier for the underlying PTY process (when available)."
     )
@@ -5706,7 +5639,7 @@ class EventMsg41(BaseModel):
         ...,
         description="Responses API call id for the associated patch apply call, if available.",
     )
-    changes: Dict[str, FileChange]
+    changes: dict[str, FileChange]
     grant_root: str | None = Field(
         None,
         description="When set, the agent is asking the user to allow writes under this root for the remainder of the session.",
@@ -5734,7 +5667,7 @@ class EventMsg47(BaseModel):
         ...,
         description="Identifier so this can be paired with the PatchApplyEnd event.",
     )
-    changes: Dict[str, FileChange] = Field(
+    changes: dict[str, FileChange] = Field(
         ..., description="The changes to be applied."
     )
     turn_id: str | None = Field(
@@ -5751,8 +5684,8 @@ class EventMsg48(BaseModel):
     call_id: str = Field(
         ..., description="Identifier for the PatchApplyBegin that finished."
     )
-    changes: Dict[str, FileChange] | None = Field(
-        {},
+    changes: dict[str, FileChange] | None = Field(
+        default_factory=lambda: FileChange({}),
         description="The changes that were applied (mirrors PatchApplyBeginEvent::changes).",
     )
     status: CommandExecutionStatus = Field(
@@ -5791,16 +5724,16 @@ class EventMsg51(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    auth_statuses: Dict[str, McpAuthStatus] = Field(
+    auth_statuses: dict[str, McpAuthStatus] = Field(
         ..., description="Authentication status for each configured MCP server."
     )
-    resource_templates: Dict[str, List[ResourceTemplate]] = Field(
+    resource_templates: dict[str, list[ResourceTemplate]] = Field(
         ..., description="Known resource templates grouped by server name."
     )
-    resources: Dict[str, List[Resource]] = Field(
+    resources: dict[str, list[Resource]] = Field(
         ..., description="Known resources grouped by server name."
     )
-    tools: Dict[str, Tool] = Field(
+    tools: dict[str, Tool] = Field(
         ..., description="Fully qualified tool name -> tool definition."
     )
     type: Type69 = Field(..., title="McpListToolsResponseEventMsgType")
@@ -5810,7 +5743,7 @@ class EventMsg54(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    skills: List[RemoteSkillSummary]
+    skills: list[RemoteSkillSummary]
     type: Type72 = Field(..., title="ListRemoteSkillsResponseEventMsgType")
 
 
@@ -5914,10 +5847,10 @@ class EventMsg75(BaseModel):
         populate_by_name=True,
     )
     call_id: str = Field(..., description="ID of the waiting call.")
-    receiver_agents: List[CollabAgentRef] | None = Field(
+    receiver_agents: list[CollabAgentRef] | None = Field(
         None, description="Optional nicknames/roles for receivers."
     )
-    receiver_thread_ids: List[ThreadId] = Field(
+    receiver_thread_ids: list[ThreadId] = Field(
         ..., description="Thread ID of the receivers."
     )
     sender_thread_id: ThreadId = Field(..., description="Thread ID of the sender.")
@@ -5928,12 +5861,12 @@ class EventMsg76(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    agent_statuses: List[CollabAgentStatusEntry] | None = Field(
+    agent_statuses: list[CollabAgentStatusEntry] | None = Field(
         None, description="Optional receiver metadata paired with final statuses."
     )
     call_id: str = Field(..., description="ID of the waiting call.")
     sender_thread_id: ThreadId = Field(..., description="Thread ID of the sender.")
-    statuses: Dict[str, AgentStatus] = Field(
+    statuses: dict[str, AgentStatus] = Field(
         ...,
         description="Last known status of the receiver agents reported to the sender agent.",
     )
@@ -6044,7 +5977,7 @@ class ExperimentalFeatureListResponse(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    data: List[ExperimentalFeature]
+    data: list[ExperimentalFeature]
     next_cursor: str | None = Field(
         None,
         alias="nextCursor",
@@ -6085,9 +6018,6 @@ class FunctionCallOutputContentItem2(BaseModel):
 class FunctionCallOutputContentItem(
     RootModel[FunctionCallOutputContentItem1 | FunctionCallOutputContentItem2]
 ):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: FunctionCallOutputContentItem1 | FunctionCallOutputContentItem2 = Field(
         ...,
         description="Responses API compatible content items that can be returned by a tool call. This is a subset of ContentItem with the types we support as function call outputs.",
@@ -6117,7 +6047,7 @@ class HookRunSummary(BaseModel):
     completed_at: int | None = Field(None, alias="completedAt")
     display_order: int = Field(..., alias="displayOrder")
     duration_ms: int | None = Field(None, alias="durationMs")
-    entries: List[HookOutputEntry]
+    entries: list[HookOutputEntry]
     event_name: HookEventName = Field(..., alias="eventName")
     execution_mode: HookExecutionMode = Field(..., alias="executionMode")
     handler_type: HookHandlerType = Field(..., alias="handlerType")
@@ -6144,9 +6074,9 @@ class McpServerStatus(BaseModel):
     )
     auth_status: McpAuthStatus = Field(..., alias="authStatus")
     name: str
-    resource_templates: List[ResourceTemplate] = Field(..., alias="resourceTemplates")
-    resources: List[Resource]
-    tools: Dict[str, Tool]
+    resource_templates: list[ResourceTemplate] = Field(..., alias="resourceTemplates")
+    resources: list[Resource]
+    tools: dict[str, Tool]
 
 
 class Model(BaseModel):
@@ -6161,12 +6091,12 @@ class Model(BaseModel):
     display_name: str = Field(..., alias="displayName")
     hidden: bool
     id: str
-    input_modalities: List[InputModality] | None = Field(
+    input_modalities: list[InputModality] | None = Field(
         ["text", "image"], alias="inputModalities"
     )
     is_default: bool = Field(..., alias="isDefault")
     model: str
-    supported_reasoning_efforts: List[ReasoningEffortOption] = Field(
+    supported_reasoning_efforts: list[ReasoningEffortOption] = Field(
         ..., alias="supportedReasoningEfforts"
     )
     supports_personality: bool | None = Field(False, alias="supportsPersonality")
@@ -6178,7 +6108,7 @@ class ModelListResponse(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    data: List[Model]
+    data: list[Model]
     next_cursor: str | None = Field(
         None,
         alias="nextCursor",
@@ -6226,7 +6156,7 @@ class PluginMarketplaceEntry(BaseModel):
     )
     name: str
     path: AbsolutePathBuf
-    plugins: List[PluginSummary]
+    plugins: list[PluginSummary]
 
 
 class RateLimitSnapshot(BaseModel):
@@ -6265,7 +6195,7 @@ class RealtimeHandoffRequested(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    active_transcript: List[RealtimeTranscriptEntry]
+    active_transcript: list[RealtimeTranscriptEntry]
     handoff_id: str
     input_transcript: str
     item_id: str
@@ -6279,7 +6209,7 @@ class RequestUserInputQuestion(BaseModel):
     id: str
     is_other: bool | None = Field(False, alias="isOther")
     is_secret: bool | None = Field(False, alias="isSecret")
-    options: List[RequestUserInputQuestionOption] | None = None
+    options: list[RequestUserInputQuestionOption] | None = None
     question: str
 
 
@@ -6326,9 +6256,6 @@ class ReviewDecision(
         | ReviewDecision6
     ]
 ):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: (
         ReviewDecision1
         | ReviewDecision2
@@ -6354,7 +6281,7 @@ class ReviewOutputEvent(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    findings: List[ReviewFinding]
+    findings: list[ReviewFinding]
     overall_confidence_score: float
     overall_correctness: str
     overall_explanation: str
@@ -6542,7 +6469,7 @@ class SkillDependencies(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    tools: List[SkillToolDependency]
+    tools: list[SkillToolDependency]
 
 
 class SkillMetadata(BaseModel):
@@ -6568,15 +6495,15 @@ class SkillsListEntry(BaseModel):
         populate_by_name=True,
     )
     cwd: str
-    errors: List[SkillErrorInfo]
-    skills: List[SkillMetadata]
+    errors: list[SkillErrorInfo]
+    skills: list[SkillMetadata]
 
 
 class SkillsListResponse(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    data: List[SkillsListEntry]
+    data: list[SkillsListEntry]
 
 
 class ThreadSpawn(BaseModel):
@@ -6598,9 +6525,6 @@ class SubAgentSource2(BaseModel):
 
 
 class SubAgentSource(RootModel[SubAgentSource1 | SubAgentSource2 | SubAgentSource3]):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: SubAgentSource1 | SubAgentSource2 | SubAgentSource3
 
 
@@ -6608,7 +6532,7 @@ class ThreadItem1(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    content: List[UserInput]
+    content: list[UserInput]
     id: str
     type: Type148 = Field(..., title="UserMessageThreadItemType")
 
@@ -6617,7 +6541,7 @@ class ThreadItem6(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    changes: List[FileUpdateChange]
+    changes: list[FileUpdateChange]
     id: str
     status: CommandExecutionStatus
     type: Type153 = Field(..., title="FileChangeThreadItemType")
@@ -6627,7 +6551,7 @@ class ThreadItem9(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    agents_states: Dict[str, CollabAgentState] = Field(
+    agents_states: dict[str, CollabAgentState] = Field(
         ...,
         alias="agentsStates",
         description="Last known status of the target agents, when available.",
@@ -6637,7 +6561,7 @@ class ThreadItem9(BaseModel):
         None,
         description="Prompt text sent as part of the collab tool call, when available.",
     )
-    receiver_thread_ids: List[str] = Field(
+    receiver_thread_ids: list[str] = Field(
         ...,
         alias="receiverThreadIds",
         description="Thread ID of the receiving agent, when applicable. In case of spawn operation, this corresponds to the newly spawned agent.",
@@ -6685,9 +6609,6 @@ class ThreadItem(
         | ThreadItem15
     ]
 ):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: (
         ThreadItem1
         | ThreadItem2
@@ -6726,7 +6647,7 @@ class ThreadListParams(BaseModel):
         None,
         description="Optional page size; defaults to a reasonable server-side value.",
     )
-    model_providers: List[str] | None = Field(
+    model_providers: list[str] | None = Field(
         None,
         alias="modelProviders",
         description="Optional provider filter; when set, only sessions recorded under these providers are returned. When present but empty, includes all providers.",
@@ -6739,7 +6660,7 @@ class ThreadListParams(BaseModel):
     sort_key: ThreadSortKey | None = Field(
         None, alias="sortKey", description="Optional sort key; defaults to created_at."
     )
-    source_kinds: List[ThreadSourceKind] | None = Field(
+    source_kinds: list[ThreadSourceKind] | None = Field(
         None,
         alias="sourceKinds",
         description="Optional source filter; when set, only sessions from these source kinds are returned. When omitted or empty, defaults to interactive sources.",
@@ -6787,7 +6708,7 @@ class Turn(BaseModel):
         None, description="Only populated when the Turn's status is failed."
     )
     id: str
-    items: List[ThreadItem] = Field(
+    items: list[ThreadItem] = Field(
         ...,
         description="Only populated on a `thread/resume` or `thread/fork` response. For all other responses and notifications returning a Turn, the items field will be an empty list.",
     )
@@ -6806,7 +6727,7 @@ class TurnItem1(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    content: List[UserInput]
+    content: list[UserInput]
     id: str
     type: Type167 = Field(..., title="UserMessageTurnItemType")
 
@@ -6822,9 +6743,6 @@ class TurnItem(
         | TurnItem7
     ]
 ):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: (
         TurnItem1
         | TurnItem2
@@ -6849,7 +6767,7 @@ class TurnPlanUpdatedNotification(BaseModel):
         populate_by_name=True,
     )
     explanation: str | None = None
-    plan: List[TurnPlanStep]
+    plan: list[TurnPlanStep]
     thread_id: str = Field(..., alias="threadId")
     turn_id: str = Field(..., alias="turnId")
 
@@ -6871,7 +6789,7 @@ class TurnStartParams(BaseModel):
         None,
         description="Override the reasoning effort for this turn and subsequent turns.",
     )
-    input: List[UserInput]
+    input: list[UserInput]
     model: str | None = Field(
         None, description="Override the model for this turn and subsequent turns."
     )
@@ -6907,7 +6825,8 @@ class TurnStartResponse(BaseModel):
     turn: Turn
 
 
-TurnStartedNotification = TurnCompletedNotification
+class TurnStartedNotification(TurnCompletedNotification):
+    pass
 
 
 class TurnSteerParams(BaseModel):
@@ -6919,7 +6838,7 @@ class TurnSteerParams(BaseModel):
         alias="expectedTurnId",
         description="Required active turn id precondition. The request fails when it does not match the currently active turn.",
     )
-    input: List[UserInput]
+    input: list[UserInput]
     thread_id: str = Field(..., alias="threadId")
 
 
@@ -6955,25 +6874,25 @@ class AppInfo(BaseModel):
         alias="isEnabled",
         description="Whether this app is enabled in config.toml. Example: ```toml [apps.bad_app] enabled = false ```",
     )
-    labels: Dict[str, Any] | None = None
+    labels: dict[str, Any] | None = None
     logo_url: str | None = Field(None, alias="logoUrl")
     logo_url_dark: str | None = Field(None, alias="logoUrlDark")
     name: str
-    plugin_display_names: List[str] | None = Field([], alias="pluginDisplayNames")
+    plugin_display_names: list[str] | None = Field([], alias="pluginDisplayNames")
 
 
 class AppListUpdatedNotification(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    data: List[AppInfo]
+    data: list[AppInfo]
 
 
 class AppsListResponse(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    data: List[AppInfo]
+    data: list[AppInfo]
     next_cursor: str | None = Field(
         None,
         alias="nextCursor",
@@ -7048,7 +6967,7 @@ class ConfigBatchWriteParams(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    edits: List[ConfigEdit]
+    edits: list[ConfigEdit]
     expected_version: str | None = Field(None, alias="expectedVersion")
     file_path: str | None = Field(
         None,
@@ -7099,25 +7018,25 @@ class EventMsg35(BaseModel):
         None,
         description="Identifier for this specific approval callback.\n\nWhen absent, the approval is for the command item itself (`call_id`). This is present for subcommand approvals (via execve intercept).",
     )
-    available_decisions: List[ReviewDecision] | None = Field(
+    available_decisions: list[ReviewDecision] | None = Field(
         None,
         description="Ordered list of decisions the client may present for this prompt.\n\nWhen absent, clients should derive the legacy default set from the other fields on this request.",
     )
     call_id: str = Field(
         ..., description="Identifier for the associated command execution item."
     )
-    command: List[str] = Field(..., description="The command to be executed.")
+    command: list[str] = Field(..., description="The command to be executed.")
     cwd: str = Field(..., description="The command's working directory.")
     network_approval_context: NetworkApprovalContext | None = Field(
         None,
         description="Optional network context for a blocked request that can be approved.",
     )
-    parsed_cmd: List[ParsedCommand]
-    proposed_execpolicy_amendment: List[str] | None = Field(
+    parsed_cmd: list[ParsedCommand]
+    proposed_execpolicy_amendment: list[str] | None = Field(
         None,
         description="Proposed execpolicy amendment that can be applied to allow future runs.",
     )
-    proposed_network_policy_amendments: List[NetworkPolicyAmendment] | None = Field(
+    proposed_network_policy_amendments: list[NetworkPolicyAmendment] | None = Field(
         None,
         description="Proposed network policy amendments (for example allow/deny this host in future).",
     )
@@ -7144,7 +7063,7 @@ class EventMsg37(BaseModel):
         ...,
         description="Responses API call id for the associated tool call, if available.",
     )
-    questions: List[RequestUserInputQuestion]
+    questions: list[RequestUserInputQuestion]
     turn_id: str | None = Field(
         "",
         description="Turn ID that this request belongs to. Uses `#[serde(default)]` for backwards compatibility.",
@@ -7156,7 +7075,7 @@ class EventMsg53(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    skills: List[SkillsListEntry]
+    skills: list[SkillsListEntry]
     type: Type71 = Field(..., title="ListSkillsResponseEventMsgType")
 
 
@@ -7168,7 +7087,7 @@ class EventMsg57(BaseModel):
         None,
         description="Arguments for the `update_plan` todo/checklist tool (not plan mode).",
     )
-    plan: List[PlanItemArg]
+    plan: list[PlanItemArg]
     type: Type75 = Field(..., title="PlanUpdateEventMsgType")
 
 
@@ -7222,23 +7141,20 @@ class ExternalAgentConfigDetectResponse(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    items: List[ExternalAgentConfigMigrationItem]
+    items: list[ExternalAgentConfigMigrationItem]
 
 
 class ExternalAgentConfigImportParams(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    migration_items: List[ExternalAgentConfigMigrationItem] = Field(
+    migration_items: list[ExternalAgentConfigMigrationItem] = Field(
         ..., alias="migrationItems"
     )
 
 
-class FunctionCallOutputBody(RootModel[str | List[FunctionCallOutputContentItem]]):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
-    root: str | List[FunctionCallOutputContentItem]
+class FunctionCallOutputBody(RootModel[str | list[FunctionCallOutputContentItem]]):
+    root: str | list[FunctionCallOutputContentItem]
 
 
 class FunctionCallOutputPayload(BaseModel):
@@ -7258,14 +7174,15 @@ class GetAccountRateLimitsResponse(BaseModel):
         alias="rateLimits",
         description="Backward-compatible single-bucket view; mirrors the historical payload.",
     )
-    rate_limits_by_limit_id: Dict[str, Any] | None = Field(
+    rate_limits_by_limit_id: dict[str, Any] | None = Field(
         None,
         alias="rateLimitsByLimitId",
         description="Multi-bucket view keyed by metered `limit_id` (for example, `codex`).",
     )
 
 
-HookCompletedNotification = HookStartedNotification
+class HookCompletedNotification(HookStartedNotification):
+    pass
 
 
 class ItemCompletedNotification(BaseModel):
@@ -7277,14 +7194,15 @@ class ItemCompletedNotification(BaseModel):
     turn_id: str = Field(..., alias="turnId")
 
 
-ItemStartedNotification = ItemCompletedNotification
+class ItemStartedNotification(ItemCompletedNotification):
+    pass
 
 
 class ListMcpServerStatusResponse(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    data: List[McpServerStatus]
+    data: list[McpServerStatus]
     next_cursor: str | None = Field(
         None,
         alias="nextCursor",
@@ -7296,7 +7214,7 @@ class PluginListResponse(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    marketplaces: List[PluginMarketplaceEntry]
+    marketplaces: list[PluginMarketplaceEntry]
 
 
 class ProfileV2(BaseModel):
@@ -7336,9 +7254,6 @@ class RealtimeEvent(
         | RealtimeEvent8
     ]
 ):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: (
         RealtimeEvent1
         | RealtimeEvent2
@@ -7385,9 +7300,6 @@ class ResponseItem(
         | ResponseItem12
     ]
 ):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: (
         ResponseItem1
         | ResponseItem2
@@ -7507,9 +7419,6 @@ class SessionSource2(BaseModel):
 
 
 class SessionSource(RootModel[SessionSource1 | SessionSource2]):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: SessionSource1 | SessionSource2
 
 
@@ -7565,7 +7474,7 @@ class Thread(BaseModel):
     status: ThreadStatus = Field(
         ..., description="Current runtime status for the thread."
     )
-    turns: List[Turn] = Field(
+    turns: list[Turn] = Field(
         ...,
         description="Only populated on `thread/resume`, `thread/rollback`, `thread/fork`, and `thread/read` (when `includeTurns` is true) responses. For all other responses and notifications returning a Thread, the turns field will be an empty list.",
     )
@@ -7594,7 +7503,7 @@ class ThreadListResponse(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    data: List[Thread]
+    data: list[Thread]
     next_cursor: str | None = Field(
         None,
         alias="nextCursor",
@@ -7609,10 +7518,12 @@ class ThreadMetadataUpdateResponse(BaseModel):
     thread: Thread
 
 
-ThreadReadResponse = ThreadMetadataUpdateResponse
+class ThreadReadResponse(ThreadMetadataUpdateResponse):
+    pass
 
 
-ThreadResumeResponse = ThreadForkResponse
+class ThreadResumeResponse(ThreadForkResponse):
+    pass
 
 
 class ThreadRollbackResponse(BaseModel):
@@ -7625,13 +7536,16 @@ class ThreadRollbackResponse(BaseModel):
     )
 
 
-ThreadStartResponse = ThreadForkResponse
+class ThreadStartResponse(ThreadForkResponse):
+    pass
 
 
-ThreadStartedNotification = ThreadMetadataUpdateResponse
+class ThreadStartedNotification(ThreadMetadataUpdateResponse):
+    pass
 
 
-ThreadUnarchiveResponse = ThreadMetadataUpdateResponse
+class ThreadUnarchiveResponse(ThreadMetadataUpdateResponse):
+    pass
 
 
 class ClientRequest44(BaseModel):
@@ -7705,9 +7619,6 @@ class ClientRequest(
         | ClientRequest49
     ]
 ):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: (
         ClientRequest1
         | ClientRequest2
@@ -7783,7 +7694,9 @@ class Config(BaseModel):
     model_reasoning_summary: ReasoningSummary | None = None
     model_verbosity: Verbosity | None = None
     profile: str | None = None
-    profiles: Dict[str, ProfileV2] | None = {}
+    profiles: dict[str, ProfileV2] | None = Field(
+        default_factory=lambda: ProfileV2.model_validate({})
+    )
     review_model: str | None = None
     sandbox_mode: SandboxMode | None = None
     sandbox_workspace_write: SandboxWorkspaceWrite | None = None
@@ -7797,8 +7710,8 @@ class ConfigReadResponse(BaseModel):
         populate_by_name=True,
     )
     config: Config
-    layers: List[ConfigLayer] | None = None
-    origins: Dict[str, ConfigLayerMetadata]
+    layers: list[ConfigLayer] | None = None
+    origins: dict[str, ConfigLayerMetadata]
 
 
 class EventMsg4(BaseModel):
@@ -7884,9 +7797,6 @@ class ServerNotification(
         | ServerNotification46
     ]
 ):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: (
         ServerNotification1
         | ServerNotification2
@@ -7960,7 +7870,7 @@ class EventMsg20(BaseModel):
         ...,
         description="Identifier of the history log file (inode on Unix, 0 otherwise).",
     )
-    initial_messages: List[EventMsg] | None = Field(
+    initial_messages: list[EventMsg] | None = Field(
         None,
         description="Optional initial messages (as events) for resumed sessions. When present, UIs can use these to seed the history.",
     )
@@ -8073,9 +7983,6 @@ class EventMsg(
         | EventMsg80
     ]
 ):
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
     root: (
         EventMsg1
         | EventMsg2
