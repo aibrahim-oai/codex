@@ -290,8 +290,8 @@ use tokio::sync::Mutex;
 use tokio::sync::broadcast;
 use tokio::sync::oneshot;
 use tokio::sync::watch;
-use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
+use tokio_util::task::TaskTracker;
 use toml::Value as TomlValue;
 use tracing::Instrument;
 use tracing::Span;
@@ -384,7 +384,7 @@ pub(crate) struct CodexMessageProcessor {
     command_exec_manager: CommandExecManager,
     pending_fuzzy_searches: Arc<Mutex<HashMap<String, Arc<AtomicBool>>>>,
     fuzzy_search_sessions: Arc<Mutex<HashMap<String, FuzzyFileSearchSession>>>,
-    background_tasks: Arc<Mutex<Vec<JoinHandle<()>>>>,
+    background_tasks: TaskTracker,
     feedback: CodexFeedback,
     log_db: Option<LogDbLayer>,
 }
@@ -499,7 +499,7 @@ impl CodexMessageProcessor {
             command_exec_manager: CommandExecManager::default(),
             pending_fuzzy_searches: Arc::new(Mutex::new(HashMap::new())),
             fuzzy_search_sessions: Arc::new(Mutex::new(HashMap::new())),
-            background_tasks: Arc::new(Mutex::new(Vec::new())),
+            background_tasks: TaskTracker::new(),
             feedback,
             log_db,
         }
@@ -1878,19 +1878,12 @@ impl CodexMessageProcessor {
             .await;
         };
         self.background_tasks
-            .lock()
-            .await
-            .push(tokio::spawn(thread_start_task.instrument(request_span)));
+            .spawn(thread_start_task.instrument(request_span));
     }
 
     pub(crate) async fn drain_background_tasks(&self) {
-        let tasks = {
-            let mut background_tasks = self.background_tasks.lock().await;
-            std::mem::take(&mut *background_tasks)
-        };
-        for task in tasks {
-            let _ = task.await;
-        }
+        self.background_tasks.close();
+        self.background_tasks.wait().await;
     }
 
     pub(crate) async fn shutdown_threads(&self) {

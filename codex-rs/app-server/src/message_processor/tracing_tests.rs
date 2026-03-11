@@ -255,6 +255,22 @@ fn find_span_by_name<'a>(spans: &'a [SpanData], name: &str) -> &'a SpanData {
         })
 }
 
+fn find_span_by_name_with_trace<'a>(
+    spans: &'a [SpanData],
+    name: &str,
+    trace_id: TraceId,
+) -> &'a SpanData {
+    spans
+        .iter()
+        .find(|span| span.name.as_ref() == name && span.span_context.trace_id() == trace_id)
+        .unwrap_or_else(|| {
+            panic!(
+                "missing span named {name} for trace={trace_id}; exported spans:\n{}",
+                format_spans(spans)
+            )
+        })
+}
+
 fn format_spans(spans: &[SpanData]) -> String {
     spans
         .iter()
@@ -592,7 +608,7 @@ async fn thread_start_jsonrpc_span_exports_server_span_and_parents_children() ->
     );
     assert_span_descends_from(&spans, derive_config_span, server_request_span);
 
-    let default_model_span = find_span_by_name(&spans, "thread_spawn.default_model");
+    let default_model_span = find_span_by_name(&spans, "get_default_model");
     let session_init_rollout_span = find_span_by_name(&spans, "session_init.rollout");
     assert_span_descends_from(&spans, default_model_span, server_request_span);
     assert_span_descends_from(&spans, session_init_rollout_span, server_request_span);
@@ -712,9 +728,11 @@ async fn turn_start_jsonrpc_span_parents_core_turn_spans() -> Result<()> {
     tokio::task::yield_now().await;
 
     let server_request_span = find_rpc_span(&spans, SpanKind::Server, "turn/start");
-    let submission_dispatch_span = find_span_by_name(&spans, "submission_dispatch");
-    let session_task_turn_span = find_span_by_name(&spans, "session_task.turn");
-    let run_turn_span = find_span_by_name(&spans, "run_turn");
+    let submission_dispatch_span =
+        find_span_by_name_with_trace(&spans, "submission_dispatch", remote_trace_id);
+    let session_task_turn_span =
+        find_span_by_name_with_trace(&spans, "session_task.turn", remote_trace_id);
+    let run_turn_span = find_span_by_name_with_trace(&spans, "run_turn", remote_trace_id);
 
     assert_eq!(server_request_span.parent_span_id, remote_parent_span_id);
     assert!(server_request_span.parent_span_is_remote);
